@@ -1,4 +1,3 @@
-use crate::error_template::ErrorTemplate;
 use cfg_if::cfg_if;
 use leptos::*;
 use leptos_meta::*;
@@ -25,10 +24,10 @@ cfg_if! {
 }
 
 #[server(GetTodos, "/api")]
-pub async fn get_todos(cx: Scope) -> Result<Vec<Todo>, ServerFnError> {
+pub async fn get_todos() -> Result<Vec<Todo>, ServerFnError> {
     // this is just an example of how to access server context injected in the handlers
     // http::Request doesn't implement Clone, so more work will be needed to do use_context() on this
-    let req_parts = use_context::<leptos_axum::RequestParts>(cx);
+    let req_parts = use_context::<leptos_axum::RequestParts>();
 
     if let Some(req_parts) = req_parts {
         println!("Uri = {:?}", req_parts.uri);
@@ -57,6 +56,9 @@ pub async fn get_todos(cx: Scope) -> Result<Vec<Todo>, ServerFnError> {
     // if let Some(res_options) = res_options_outer {
     //     res_options.overwrite(res_parts).await;
     // }
+
+    // fake API delay
+    std::thread::sleep(std::time::Duration::from_millis(1250));
 
     Ok(todos)
 }
@@ -90,11 +92,9 @@ pub async fn delete_todo(id: u16) -> Result<(), ServerFnError> {
 }
 
 #[component]
-pub fn TodoApp(cx: Scope) -> impl IntoView {
-    //let id = use_context::<String>(cx);
-    provide_meta_context(cx);
+pub fn TodoApp() -> impl IntoView {
+    provide_meta_context();
     view! {
-        cx,
         <Link rel="shortcut icon" type_="image/ico" href="/favicon.ico"/>
         <Stylesheet id="leptos" href="/pkg/todo_app_sqlite_axum.css"/>
         <Router>
@@ -111,63 +111,58 @@ pub fn TodoApp(cx: Scope) -> impl IntoView {
 }
 
 #[component]
-pub fn Todos(cx: Scope) -> impl IntoView {
-    let add_todo = create_server_multi_action::<AddTodo>(cx);
-    let delete_todo = create_server_action::<DeleteTodo>(cx);
+pub fn Todos() -> impl IntoView {
+    let add_todo = create_server_multi_action::<AddTodo>();
+    let delete_todo = create_server_action::<DeleteTodo>();
 
-    // list of todos is loaded from the server in reaction to changes
     let todos = create_local_resource(
-        cx,
         move || (add_todo.version().get(), delete_todo.version().get()),
-        move |_| get_todos(cx),
+        move |_| get_todos(),
     );
 
     let existing_todos = {
-        move || match todos.read(cx) {
-            Some(Ok(todos)) => {
+        move || match (todos.loading()(), todos.read()) {
+            (false, Some(Ok(todos))) => {
                 if todos.is_empty() {
-                    view! { cx, <p>"No tasks were found."</p> }.into_view(cx)
+                    view! { <p>"No tasks were found."</p> }.into_view()
                 } else {
                     todos
                         .into_iter()
                         .map(|todo| {
                             view! {
-                                cx,
                                 <tr>
                                     <td>{todo.title}</td>
                                     <td>
                                         <ActionForm action=delete_todo>
                                             <input type="hidden" name="id" value={todo.id}/>
-                                            <input type="submit" value="X"/>
+                                            <input type="submit" class="btn btn-xs btn-error" value="X"/>
                                         </ActionForm>
                                     </td>
                                 </tr>
                             }
                         })
-                        .collect_view(cx)
+                        .collect_view()
                 }
             }
-            Some(Err(e)) => {
-                view! { cx, <pre class="error">"Server Error: " {e.to_string()}</pre>}.into_view(cx)
+            (false, Some(Err(e))) => {
+                view! { <pre class="error">"Server Error: " {e.to_string()}</pre>}.into_view()
             }
-            None => view! { cx, <pre>"Loading..."</pre> }.into_view(cx),
+            (true, _) => view! { <pre>"Loading..."</pre> }.into_view(),
+            _ => view! {}.into_view(),
         }
     };
 
     view! {
-        cx,
-        <div>
-            <MultiActionForm action=add_todo>
-                <label>"Add a Todo"</label>
-                <input type="text" class="input input-bordered w-full max-w-xs" name="title"/>
-                <input type="submit" class="btn btn-success" value="Add"/>
-            </MultiActionForm>
-            "Existing todos:"
-            <div class="overflow-x-auto">
-                <table class="table">
-                    {existing_todos}
-                </table>
-            </div>
+        <MultiActionForm action=add_todo>
+            <label class="px-4">"Add a Todo"</label>
+            <input type="text" class="input input-bordered w-full max-w-xs" name="title"/>
+            <input type="submit" class="btn btn-success" value="Add" class="px-4"/>
+        </MultiActionForm>
+        "Existing todos:"
+        <div class="overflow-x-auto">
+            <table class="table">
+                {existing_todos}
+            </table>
         </div>
     }
 }
