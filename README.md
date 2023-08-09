@@ -1,3 +1,15 @@
+# Prerequisites
+
+Install Tailwind CSS:
+```bash
+npm i -D tailwindcss
+```
+
+Install DaisyUi:
+```bash
+npm i -D daisyui@latest
+```
+
 # Leptos Todo App Sqlite with Axum
 
 This example creates a basic todo app with an Axum backend that uses Leptos' server functions to call sqlx from the client and seamlessly run it on the server.

@@ -9,3 +9,4 @@ Cargo.lock
 /.VSCodeCounter
 /.vscode
 node_modules
+Todos.db

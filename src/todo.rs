@@ -121,8 +121,8 @@ pub fn Todos() -> impl IntoView {
     );
 
     let existing_todos = {
-        move || match (todos.loading()(), todos.read()) {
-            (false, Some(Ok(todos))) => {
+        move || match todos.read() {
+            Some(Ok(todos)) => {
                 if todos.is_empty() {
                     view! { <p>"No tasks were found."</p> }.into_view()
                 } else {
@@ -144,11 +144,12 @@ pub fn Todos() -> impl IntoView {
                         .collect_view()
                 }
             }
-            (false, Some(Err(e))) => {
-                view! { <pre class="error">"Server Error: " {e.to_string()}</pre>}.into_view()
+            // Some(Err(e)) => {
+            //     view! { <pre class="error">{format!("Server Error: {e}")}</pre>}.into_view()
+            // }
+            _ => {
+                view! { <pre ></pre>}.into_view()
             }
-            (true, _) => view! { <pre>"Loading..."</pre> }.into_view(),
-            _ => view! {}.into_view(),
         }
     };
 
@@ -159,10 +160,13 @@ pub fn Todos() -> impl IntoView {
             <input type="submit" class="btn btn-success" value="Add" class="px-4"/>
         </MultiActionForm>
         "Existing todos:"
-        <div class="overflow-x-auto">
-            <table class="table">
-                {existing_todos}
-            </table>
-        </div>
+        <Suspense fallback=move || view! { <p>"Loading..."</p> }>
+            <div class="overflow-x-auto">
+                <table class="table">
+                    {existing_todos}
+                </table>
+            </div>
+        </Suspense>
+
     }
 }
