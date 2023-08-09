@@ -148,7 +148,7 @@ pub fn Todos() -> impl IntoView {
                 view! { <pre class="error">"Server Error: " {e.to_string()}</pre>}.into_view()
             }
             (true, _) => view! { <pre>"Loading..."</pre> }.into_view(),
-            _ => view! {}.into_view(),
+            _ => view! { <pre></pre> }.into_view(),
         }
     };
 
