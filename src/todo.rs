@@ -121,38 +121,33 @@ pub fn Todos() -> impl IntoView {
     );
 
     let existing_todos = {
-        move || match todos.read() {
-            Some(Ok(todos)) => {
-                if todos.is_empty() {
-                    view! { <p>"No tasks were found."</p> }.into_view()
-                } else {
-                    todos
-                        .into_iter()
-                        .map(|todo| {
-                            view! {
-                                <tr>
-                                    <td>{todo.title}</td>
-                                    <td>
-                                        <ActionForm action=delete_todo>
-                                            <input type="hidden" name="id" value={todo.id}/>
-                                            <input type="submit" class="btn btn-xs btn-error" value="X"/>
-                                        </ActionForm>
-                                    </td>
-                                </tr>
-                            }
-                        })
-                        .collect_view()
-                }
-            }
-            // Some(Err(e)) => {
-            //     view! { <pre class="error">{format!("Server Error: {e}")}</pre>}.into_view()
-            // }
-            _ => {
-                view! { <pre ></pre>}.into_view()
-            }
+        move || {
+            todos.read()
+                .map(|todo| match todo {
+                    Ok(todos) => {
+                        if todos.is_empty() {
+                            view! { <p>"No tasks were found."</p> }.into_view()
+                        } else {
+                            todos.into_iter().map(|todo| {
+                                view! {
+                                    <tr>
+                                        <td>{todo.title}</td>
+                                        <td>
+                                            <ActionForm action=delete_todo>
+                                                <input type="hidden" name="id" value={todo.id}/>
+                                                <input type="submit" class="btn btn-xs btn-error" value="X"/>
+                                            </ActionForm>
+                                        </td>
+                                    </tr>
+                                }
+                            }).collect_view()
+                        }
+                    }
+                    Err(e) => view! { <pre class="error">{format!("Server Error: {e}")}</pre>}.into_view(),                    
+                })
+                .unwrap_or_default()
         }
     };
-
     view! {
         <MultiActionForm action=add_todo>
             <label class="px-4">"Add a Todo"</label>
@@ -167,6 +162,5 @@ pub fn Todos() -> impl IntoView {
                 </table>
             </div>
         </Suspense>
-
     }
 }
