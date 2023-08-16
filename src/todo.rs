@@ -113,44 +113,33 @@ pub fn TodoApp() -> impl IntoView {
 #[component]
 pub fn Todos() -> impl IntoView {
     let add_todo = create_server_multi_action::<AddTodo>();
-    let delete_todo = create_server_action::<DeleteTodo>();
+    let delete_todo: Action<DeleteTodo, Result<(), ServerFnError>> =
+        create_server_action::<DeleteTodo>();
 
     let todos = create_local_resource(
         move || (add_todo.version().get(), delete_todo.version().get()),
         move |_| get_todos(),
     );
 
-    let existing_todos = {
-        move || match (todos.loading()(), todos.read()) {
-            (false, Some(Ok(todos))) => {
-                if todos.is_empty() {
-                    view! { <p>"No tasks were found."</p> }.into_view()
-                } else {
-                    todos
-                        .into_iter()
-                        .map(|todo| {
-                            view! {
-                                <tr>
-                                    <td>{todo.title}</td>
-                                    <td>
-                                        <ActionForm action=delete_todo>
-                                            <input type="hidden" name="id" value={todo.id}/>
-                                            <input type="submit" class="btn btn-xs btn-error" value="X"/>
-                                        </ActionForm>
-                                    </td>
-                                </tr>
-                            }
-                        })
-                        .collect_view()
-                }
-            }
-            (false, Some(Err(e))) => {
-                view! { <pre class="error">"Server Error: " {e.to_string()}</pre>}.into_view()
-            }
-            (true, _) => view! { <pre>"Loading..."</pre> }.into_view(),
-            _ => view! { <pre></pre> }.into_view(),
+    let update = create_memo(move |_| match (todos.loading()(), todos.read()) {
+        (false, Some(r)) => Some(r),
+        _ => None,
+    });
+
+    let existing_todos = move || match update() {
+        Some(Ok(todos)) => view! { <TodoRow todos delete_todo/> }.into_view(),
+        Some(Err(e)) => {
+            view! { <pre class="error">"Server Error: " {e.to_string()}</pre>}.into_view()
         }
+        None => view! { <pre>"Loading..."</pre> }.into_view(),
     };
+    // (false, Some(Ok(todos))) => view! { <TodoRow todos delete_todo/> }.into_view(),
+    // (false, Some(Err(e))) => {
+    //     view! { <pre class="error">"Server Error: " {e.to_string()}</pre>}.into_view()
+    // }
+    // //_ => view! { <pre>"Loading..."</pre> }.into_view(),
+    // (true, _) => view! { <pre>"Loading..."</pre> }.into_view(),
+    // _ => view! { <pre></pre> }.into_view(),
 
     view! {
         <MultiActionForm action=add_todo>
@@ -164,5 +153,32 @@ pub fn Todos() -> impl IntoView {
                 {existing_todos}
             </table>
         </div>
+    }
+}
+
+#[component]
+pub fn TodoRow(
+    todos: Vec<Todo>,
+    delete_todo: Action<DeleteTodo, Result<(), ServerFnError>>,
+) -> impl IntoView {
+    if todos.is_empty() {
+        view! { <p>"No tasks were found."</p> }.into_view()
+    } else {
+        todos
+            .into_iter()
+            .map(|todo| {
+                view! {
+                    <tr>
+                        <td>{todo.title}</td>
+                        <td>
+                            <ActionForm action=delete_todo>
+                                <input type="hidden" name="id" value={todo.id}/>
+                                <input type="submit" class="btn btn-xs btn-error" value="X"/>
+                            </ActionForm>
+                        </td>
+                    </tr>
+                }
+            })
+            .collect_view()
     }
 }
